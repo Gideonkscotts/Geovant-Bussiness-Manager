@@ -10,7 +10,7 @@ import {
   ArrowRight,
   Loader2,
 } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { signIn, signUp } from "../lib/auth";
 
 export default function Auth() {
   const [mode, setMode] = useState("login");
@@ -21,7 +21,6 @@ export default function Auth() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -54,73 +53,21 @@ export default function Auth() {
 
     try {
       if (isRegister) {
-        const { data, error: signupError } = await supabase.auth.signUp({
+        await signUp({
+          fullName: fullName.trim(),
+          businessName: businessName.trim(),
           email: email.trim(),
           password,
-          options: {
-            data: {
-              full_name: fullName.trim(),
-              business_name: businessName.trim(),
-            },
-          },
         });
 
-        if (signupError) throw signupError;
-
-        if (data.session) {
-          setMessage("Your account has been created successfully.");
-        } else {
-          setMode("login");
-          setPassword("");
-          setConfirmPassword("");
-          setMessage(
-            "Registration successful! Check your email and confirm your account before signing in."
-          );
-        }
+        setMessage("Your account has been created successfully.");
       } else {
-        const { error: loginError } =
-          await supabase.auth.signInWithPassword({
-            email: email.trim(),
-            password,
-          });
-
-        if (loginError) throw loginError;
+        await signIn(email.trim(), password);
       }
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function resendConfirmation() {
-    setError("");
-    setMessage("");
-
-    if (!email.trim()) {
-      setError("Enter your email address first.");
-      return;
-    }
-
-    setResending(true);
-
-    try {
-      const { error: resendError } = await supabase.auth.resend({
-        type: "signup",
-        email: email.trim(),
-      });
-
-      if (resendError) throw resendError;
-
-      setMessage(
-        "A new confirmation email has been requested. Check your inbox and spam folder."
-      );
-    } catch (err) {
-      setError(
-        err.message || "Unable to resend the confirmation email. Please try again."
-      );
-    } finally {
-      setResending(false);
     }
   }
 
@@ -310,19 +257,6 @@ export default function Auth() {
               )}
             </button>
           </form>
-
-          {!isRegister && (
-            <button
-              type="button"
-              onClick={resendConfirmation}
-              disabled={resending}
-              className="mt-5 w-full text-center text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50"
-            >
-              {resending
-                ? "Requesting email..."
-                : "Didn't receive confirmation email? Resend"}
-            </button>
-          )}
 
           <div className="mt-7 border-t border-white/10 pt-6 text-center">
             <p className="text-sm text-gray-400">

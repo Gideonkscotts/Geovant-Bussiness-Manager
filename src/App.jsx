@@ -12,16 +12,15 @@ import {
   Bell,
   Menu,
   X,
-  ArrowUpRight,
-  ArrowDownRight,
   Boxes,
-  Activity,
   LogOut,
 } from "lucide-react";
 
 import Inventory from "./pages/Inventory";
+import Sales from "./pages/Sales";
+import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
-import { supabase } from "./lib/supabase";
+import { onAuthChange, restoreSession, signOut } from "./lib/auth";
 
 const navigation = [
   {
@@ -41,33 +40,6 @@ const navigation = [
       { name: "Reports", icon: ChartNoAxesCombined },
       { name: "Settings", icon: Settings },
     ],
-  },
-];
-
-const demoTransactions = [
-  {
-    id: 1,
-    description: "Cooking oil x 15",
-    type: "Sale",
-    amount: "K1,500.00",
-    date: "19 Nov 2026",
-    status: "Completed",
-  },
-  {
-    id: 2,
-    description: "Transport",
-    type: "Expense",
-    amount: "K32.00",
-    date: "18 Nov 2026",
-    status: "Completed",
-  },
-  {
-    id: 3,
-    description: "Salt x 2",
-    type: "Sale",
-    amount: "K40.00",
-    date: "18 Nov 2026",
-    status: "Completed",
   },
 ];
 
@@ -155,152 +127,6 @@ function Sidebar({ activePage, setActivePage, isOpen, closeSidebar }) {
   );
 }
 
-function StatCard({ title, value, description, icon: Icon, trend, positive }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-[#171a21] p-5 transition hover:border-blue-500/40">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-400">{title}</p>
-        <div className="rounded-lg bg-blue-500/10 p-2 text-blue-400">
-          <Icon size={19} />
-        </div>
-      </div>
-
-      <h2 className="mt-5 text-2xl font-bold tracking-tight">{value}</h2>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-        <span className={positive ? "text-green-400" : "text-gray-400"}>
-          {trend}
-        </span>
-        <span className="text-gray-500">{description}</span>
-      </div>
-    </div>
-  );
-}
-
-function Dashboard() {
-  return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold">Welcome back!</h2>
-        <p className="mt-2 text-sm text-gray-400">
-          Here's an overview of your business.
-        </p>
-      </div>
-
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="Total Sales"
-          value="K1,640.00"
-          description="Recorded sales"
-          icon={ArrowUpRight}
-          trend="Demo data"
-          positive
-        />
-
-        <StatCard
-          title="Total Expenses"
-          value="K232.00"
-          description="Recorded expenses"
-          icon={ArrowDownRight}
-          trend="Demo data"
-        />
-
-        <StatCard
-          title="Available Stock"
-          value="4,338"
-          description="Demo stock units"
-          icon={Boxes}
-          trend="Not connected"
-        />
-
-        <StatCard
-          title="Profit"
-          value="K1,408.00"
-          description="Sales minus expenses"
-          icon={ChartNoAxesCombined}
-          trend="Demo calculation"
-          positive
-        />
-      </div>
-
-      <section className="overflow-hidden rounded-xl border border-white/10 bg-[#171a21]">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 p-5">
-          <div>
-            <h3 className="font-semibold">Recent Transactions</h3>
-            <p className="mt-1 text-xs text-gray-400">
-              Example business activities
-            </p>
-          </div>
-          <span className="text-xs text-blue-400">Demonstration</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px] text-left text-sm">
-            <thead className="bg-[#1d222c] text-xs uppercase tracking-wider text-gray-400">
-              <tr>
-                <th className="px-5 py-4">Description</th>
-                <th className="px-5 py-4">Type</th>
-                <th className="px-5 py-4">Amount</th>
-                <th className="px-5 py-4">Date</th>
-                <th className="px-5 py-4">Status</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {demoTransactions.map((transaction) => (
-                <tr
-                  key={transaction.id}
-                  className="border-t border-white/5 hover:bg-white/[0.02]"
-                >
-                  <td className="px-5 py-4 font-medium">
-                    {transaction.description}
-                  </td>
-                  <td
-                    className={`px-5 py-4 ${
-                      transaction.type === "Sale"
-                        ? "text-green-400"
-                        : "text-red-400"
-                    }`}
-                  >
-                    {transaction.type}
-                  </td>
-                  <td className="px-5 py-4">{transaction.amount}</td>
-                  <td className="px-5 py-4 text-gray-400">
-                    {transaction.date}
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className="rounded-full bg-green-500/10 px-3 py-1 text-xs text-green-400">
-                      {transaction.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <div className="grid gap-5 lg:grid-cols-2">
-        <div className="rounded-xl border border-white/10 bg-[#171a21] p-6">
-          <Package size={24} className="mb-4 text-blue-400" />
-          <h3 className="font-semibold">Inventory management</h3>
-          <p className="mt-2 text-sm text-gray-400">
-            Manage products, prices and available stock.
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-white/10 bg-[#171a21] p-6">
-          <Activity size={24} className="mb-4 text-blue-400" />
-          <h3 className="font-semibold">Business performance</h3>
-          <p className="mt-2 text-sm text-gray-400">
-            Monitor business activity and performance.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function PlaceholderPage({ title }) {
   return (
     <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-[#171a21] p-8 text-center">
@@ -316,7 +142,7 @@ function PlaceholderPage({ title }) {
 }
 
 export default function App() {
-  const [session, setSession] = useState(null);
+  const [user, setUser] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
   const [activePage, setActivePage] = useState("Dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -325,44 +151,29 @@ export default function App() {
   useEffect(() => {
     let mounted = true;
 
-    async function loadSession() {
-      const { data, error } = await supabase.auth.getSession();
-
+    restoreSession().then((currentUser) => {
       if (!mounted) return;
 
-      if (error) {
-        console.error("Session error:", error.message);
-      }
-
-      setSession(data?.session ?? null);
+      setUser(currentUser);
       setCheckingSession(false);
-    }
+    });
 
-    loadSession();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const unsubscribe = onAuthChange((currentUser) => {
       if (mounted) {
-        setSession(newSession);
+        setUser(currentUser);
       }
     });
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      unsubscribe();
     };
   }, []);
 
   async function handleLogout() {
     setLoggingOut(true);
 
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      console.error("Logout error:", error.message);
-      alert("Unable to log out. Please try again.");
-    }
+    await signOut();
 
     setLoggingOut(false);
   }
@@ -380,15 +191,12 @@ export default function App() {
     );
   }
 
-  if (!session) {
+  if (!user) {
     return <Auth />;
   }
 
-  const user = session.user;
-  const fullName =
-    user.user_metadata?.full_name || user.email?.split("@")[0] || "User";
-  const businessName =
-    user.user_metadata?.business_name || "Business account";
+  const fullName = user.full_name || user.email?.split("@")[0] || "User";
+  const businessName = user.business_name || "Business account";
 
   const closeSidebar = () => setSidebarOpen(false);
 
@@ -455,9 +263,11 @@ export default function App() {
 
         <main className="mx-auto max-w-[1600px] p-5 md:p-8">
           {activePage === "Dashboard" ? (
-            <Dashboard />
+            <Dashboard onNavigate={setActivePage} />
           ) : activePage === "Inventory" ? (
             <Inventory />
+          ) : activePage === "Sales" ? (
+            <Sales />
           ) : (
             <PlaceholderPage title={activePage} />
           )}

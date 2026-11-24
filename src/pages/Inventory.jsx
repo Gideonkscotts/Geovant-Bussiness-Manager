@@ -17,7 +17,8 @@ import {
   History,
   Clock,
 } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
+import { getCurrentUser } from "../lib/auth";
 
 const STORAGE_KEY = "geovantProducts";
 
@@ -145,19 +146,14 @@ export default function Inventory() {
     loadInventory();
   }, []);
 
-  // Load products from Supabase
+  // Load products from the backend
   async function loadInventory() {
     setLoading(true);
     setError("");
     setNotice("");
 
     try {
-      const { data: userResult, error: userError } =
-        await supabase.auth.getUser();
-
-      if (userError) throw userError;
-
-      const user = userResult?.user;
+      const user = getCurrentUser();
 
       if (!user) {
         setError("Your session has expired. Please log in again.");
@@ -167,13 +163,7 @@ export default function Inventory() {
 
       setUserId(user.id);
 
-      const { data, error: dbError } = await supabase
-        .from("products")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-      if (dbError) throw dbError;
+      const data = await api.get("/products");
 
       // Import older local products if the database is empty
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -205,12 +195,7 @@ export default function Inventory() {
           )
         );
 
-        const { data: imported, error: importError } = await supabase
-          .from("products")
-          .insert(rows)
-          .select();
-
-        if (importError) throw importError;
+        const imported = await api.post("/products/import", rows);
 
         setProducts((imported || []).map(mapFromDatabase));
 
@@ -365,15 +350,10 @@ export default function Inventory() {
       };
 
       if (editingId) {
-        const { data, error: updateError } = await supabase
-          .from("products")
-          .update(mapToDatabase(payload, userId))
-          .eq("id", editingId)
-          .eq("user_id", userId)
-          .select()
-          .single();
-
-        if (updateError) throw updateError;
+        const data = await api.put(
+          `/products/${editingId}`,
+          mapToDatabase(payload, userId)
+        );
 
         const updated = mapFromDatabase(data);
 
@@ -383,13 +363,10 @@ export default function Inventory() {
 
         setNotice("Product updated successfully.");
       } else {
-        const { data, error: insertError } = await supabase
-          .from("products")
-          .insert(mapToDatabase(payload, userId))
-          .select()
-          .single();
-
-        if (insertError) throw insertError;
+        const data = await api.post(
+          "/products",
+          mapToDatabase(payload, userId)
+        );
 
         setProducts((prev) => [mapFromDatabase(data), ...prev]);
 
@@ -422,13 +399,7 @@ export default function Inventory() {
     setNotice("");
 
     try {
-      const { error: deleteError } = await supabase
-        .from("products")
-        .delete()
-        .eq("id", id)
-        .eq("user_id", userId);
-
-      if (deleteError) throw deleteError;
+      await api.delete(`/products/${id}`);
 
       setProducts((prev) => prev.filter((p) => p.id !== id));
 
@@ -446,7 +417,7 @@ export default function Inventory() {
     setNotice("");
   }
 
-  // Save stock movement through Supabase RPC
+  // Save stock movement through the backend
   async function saveMovement(e) {
     e.preventDefault();
     setMovementError("");
@@ -471,17 +442,11 @@ export default function Inventory() {
     setMovementSaving(true);
 
     try {
-      const { data, error: rpcError } = await supabase.rpc(
-        "adjust_product_stock",
-        {
-          p_product_id: movementProduct.id,
-          p_movement_type: movementForm.type,
-          p_quantity: quantity,
-          p_reason: movementForm.reason.trim(),
-        }
-      );
-
-      if (rpcError) throw rpcError;
+      const data = await api.post(`/products/${movementProduct.id}/stock`, {
+        movement_type: movementForm.type,
+        quantity,
+        reason: movementForm.reason.trim(),
+      });
 
       const newQty = Number(data?.new_quantity);
 
@@ -512,14 +477,7 @@ export default function Inventory() {
     setHistoryError("");
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from("inventory_movements")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(200);
-
-      if (fetchError) throw fetchError;
+      const data = await api.get("/inventory/movements?limit=200");
 
       const productById = new Map(products.map((p) => [p.id, p]));
 
